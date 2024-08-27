@@ -1,68 +1,81 @@
-import React, { useState } from 'react'
-import { Line } from 'react-chartjs-2'
+import React, { useEffect, useRef, useState } from 'react'
+
+import Chart from 'chart.js/auto'
 import { CompareIcon } from './logo/compare'
+import { externalTooltip } from './externalToolTip'
 import { FullscreenIcon } from './logo/fullScreenLogo'
 import { Tabs, Tab, ButtonGroup, Button, Box } from '@mui/material'
-import { AMOUNT_VALUES, DATA_LABLES, DATA_VALUES, INC_VALUES, INTERVALS } from './constants'
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js'
+import { AMOUNT_VALUES, INC_VALUES, INTERVALS, dataLabels, lineDataset, barDataset } from './common.js'
 
 import './ChartComponent.css'
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend)
-
 const ChartComponent = () => {
+  const chartRef = useRef(null)
+  const chartInstance = useRef(null)
   const [selectedTab, setSelectedTab] = useState(1)
   const [amount, setAmount] = useState(AMOUNT_VALUES[2])
   const [increment, setIncrement] = useState(INC_VALUES[2])
   const [selectedInterval, setSelectedInterval] = useState('1w')
 
   const handleIntervalChange = (interval) => {
-    setSelectedInterval(interval)
     const index = INTERVALS.indexOf(interval)
-
+    setSelectedInterval(interval)
     setAmount(AMOUNT_VALUES[index])
     setIncrement(INC_VALUES[index])
   }
 
-  const data = {
-    labels: DATA_LABLES,
-    datasets: [
-      {
-        label: '',
-        data: DATA_VALUES,
-        borderColor: '#4B40EE',
-        backgroundColor: '#4B40EE',
-      },
-    ],
-  }
+  useEffect(() => {
+    if (selectedTab === 1 && chartRef.current) {
+      if (chartInstance.current) {
+        chartInstance.current.destroy()
+      }
+      const ctx = chartRef.current.getContext('2d')
 
-  const options = {
-    responsive: true,
-    plugins: {
-      legend: {
-        display: false,
-      },
-    },
-    scales: {
-      x: {
-        grid: {
-          display: false,
+      chartInstance.current = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: dataLabels(selectedInterval),
+          datasets: [
+            {
+              type: 'bar',
+              label: 'Bar Dataset',
+              data: barDataset(selectedInterval),
+              borderColor: '#d8d7e2',
+              backgroundColor: '#d8d7e2',
+            },
+            {
+              type: 'line',
+              label: 'Line Dataset',
+              data: lineDataset(selectedInterval),
+              borderColor: '#4B40EE',
+              backgroundColor: '#4B40EE',
+              pointRadius: 2,
+            },
+          ],
         },
-      },
-      y: {
-        grid: {
-          color: 'rgba(0, 0, 0, 0.1)',
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: true },
+            tooltip: { enabled: false, external: externalTooltip },
+          },
         },
-      },
-    },
-  }
+      })
+    }
+
+    return () => {
+      if (chartInstance.current) {
+        chartInstance.current.destroy()
+      }
+    }
+  }, [selectedTab, selectedInterval])
 
   const renderContent = () => {
     switch (selectedTab) {
       case 0:
         return <Box><h2>Test Summary Content</h2></Box>
       case 1:
-        return <Line data={data} options={options} />
+        return <canvas ref={chartRef}></canvas>
       case 2:
         return <Box><h2>Test Statistics Content</h2></Box>
       case 3:
@@ -81,8 +94,7 @@ const ChartComponent = () => {
           {amount}{' '}
           <span className='chart-subheading'>USD</span>
         </h2>
-        <p className={`chart-value ${increment.trim().startsWith('+') ? 'inrement-text' : 'decrement-text'}`}>{increment}</p>
-
+        <p className={`chart-value ${increment.trim().startsWith('+') ? 'increment-text' : 'decrement-text'}`}>{increment}</p>
       </div>
 
       <Box className='tabs-container'>
@@ -121,7 +133,7 @@ const ChartComponent = () => {
           {renderContent()}
         </Box>
       </Box>
-    </div >
+    </div>
   )
 }
 
